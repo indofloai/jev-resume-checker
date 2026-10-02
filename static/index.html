@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume Classifier</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #fff; --text: #1b1f24; --muted: #5d6673; --line: #e2e5ea;
+  --accent: #3b5bdb; --accent-soft: #e7ecff; --warn: #b54708; --warn-soft: #fff1e0;
+  --ok: #2b8a3e; --bar: #c5d0fa; --chip: #eef0f3;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111418; --panel: #1a1e24; --text: #e6e8eb; --muted: #9aa3ae; --line: #2b313a;
+    --accent: #8ea4ff; --accent-soft: #232b48; --warn: #ffb366; --warn-soft: #3a2a17;
+    --ok: #69db7c; --bar: #34406e; --chip: #252b33; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 17px; margin: 0 12px 0 0; }
+button, .btn { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; text-decoration: none; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+#progress { color: var(--muted); font-size: 13px; }
+.layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; padding: 16px 20px; }
+aside { display: flex; flex-direction: column; gap: 14px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.panel h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.opt { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 1px 0; }
+.opt .n { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+input[type=search] { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+.weight { display: grid; grid-template-columns: 1fr 90px 24px; align-items: center; gap: 6px; font-size: 13px; }
+.weight input { width: 100%; }
+#drop { border: 2px dashed var(--line); border-radius: 8px; padding: 14px; text-align: center; color: var(--muted); }
+#drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; }
+.stat b { display: block; font-size: 20px; }
+.stat span { color: var(--muted); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--accent-soft); }
+.sub { color: var(--muted); font-size: 12px; }
+.chip { display: inline-block; background: var(--chip); border-radius: 10px; padding: 1px 8px; margin: 1px 2px 1px 0; font-size: 12px; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.meter { width: 90px; height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.empty { padding: 40px; text-align: center; color: var(--muted); }
+#drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(560px, 100%); background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 18px 20px; transform: translateX(100%); transition: transform .2s; z-index: 10; box-shadow: -8px 0 24px rgba(0,0,0,.12); }
+#drawer.open { transform: none; }
+#drawer h2 { margin: 0 0 2px; font-size: 18px; }
+#drawer h4 { margin: 16px 0 6px; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .04em; }
+.prow { display: grid; grid-template-columns: 170px 1fr 44px; gap: 8px; align-items: center; font-size: 12px; margin: 2px 0; }
+.prow .bar { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; }
+.prow .bar i { display: block; height: 100%; background: var(--bar); }
+.prow.sel .bar i { background: var(--accent); }
+.prow span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.review { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 8px 10px; margin-top: 8px; font-size: 13px; }
+@media (max-width: 820px) {
+  .layout { grid-template-columns: 1fr; padding: 12px 16px; }
+  .hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Resume Classifier <span class="sub">powered by Jev</span></h1>
+  <button class="primary" id="scan">Classify ./resumes folder</button>
+  <label class="btn">Upload PDFs<input type="file" id="file" accept=".pdf" multiple hidden></label>
+  <a class="btn" href="/api/export.csv">Export CSV</a>
+  <span id="progress"></span>
+</header>
+
+<div class="layout">
+  <aside>
+    <div id="drop">Drop resume PDFs here</div>
+    <div class="panel"><input type="search" id="q" placeholder="Search name, file, skill…"></div>
+    <div class="panel"><h3>Ranking weights</h3><div id="weights"></div>
+      <div class="sub" style="margin-top:6px">Re-ranks instantly; Jev isn't re-run.</div></div>
+    <div class="panel"><label class="opt"><input type="checkbox" id="reviewOnly"> Needs review only</label></div>
+    <div class="panel"><h3>Job family</h3><div id="f-family"></div></div>
+    <div class="panel"><h3>Seniority</h3><div id="f-seniority"></div></div>
+    <div class="panel"><h3>Experience</h3><div id="f-exp"></div></div>
+    <div class="panel"><h3>Tags (all must match)</h3><div id="f-tags"></div></div>
+    <div class="panel"><h3>Skills (all must match)</h3><div id="f-skills"></div></div>
+  </aside>
+  <main>
+    <div class="stats" id="stats"></div>
+    <table>
+      <thead><tr>
+        <th data-sort="name">Candidate</th>
+        <th data-sort="primary_family">Category</th>
+        <th data-sort="seniority" class="hide-sm">Seniority</th>
+        <th data-sort="years_experience" class="hide-sm">Exp.</th>
+        <th data-sort="composite">Profile score</th>
+        <th class="hide-sm">Tags</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </main>
+</div>
+<aside id="drawer"></aside>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pretty = k => String(k).replace(/_/g, " ").replace(/^\w/, c => c.toUpperCase());
+const EXP_BANDS = ["<1 yr", "1–3 yrs", "3–6 yrs", "6–10 yrs", "10+ yrs"];
+const DEFAULT_WEIGHTS = {seniority: 2, leadership: 1, technical_depth: 1, impact_evidence: 2, completeness: 1};
+
+let TAX = null, DATA = [], sortKey = "composite", sortDir = -1;
+const filters = {family: new Set(), seniority: new Set(), exp: new Set(), tags: new Set(), skills: new Set()};
+let weights = {...DEFAULT_WEIGHTS};
+try { Object.assign(weights, JSON.parse(localStorage.getItem("weights") || "{}")); } catch {}
+
+function composite(r) {
+  if (r.status !== "ok") return -1;
+  let tot = 0, wsum = 0;
+  for (const [k, w] of Object.entries(weights)) {
+    const s = r.scores[k]; if (!s || !w) continue;
+    tot += w * s.score / s.max; wsum += w;
+  }
+  return wsum ? tot / wsum : 0;
+}
+
+function renderWeights() {
+  $("#weights").innerHTML = Object.keys(TAX.scores).map(k => `
+    <div class="weight"><span>${pretty(k)}</span>
+      <input type="range" min="0" max="5" step="1" value="${weights[k] ?? 0}" data-w="${k}"><span>${weights[k] ?? 0}</span></div>`).join("");
+  document.querySelectorAll("[data-w]").forEach(el => el.oninput = () => {
+    weights[el.dataset.w] = +el.value; el.nextElementSibling.textContent = el.value;
+    try { localStorage.setItem("weights", JSON.stringify(weights)); } catch {}
+    render();
+  });
+}
+
+function checkList(id, set, options, counts) {
+  $(id).innerHTML = options.map(([k, label]) => `
+    <label class="opt"><input type="checkbox" value="${esc(k)}" ${set.has(k) ? "checked" : ""}>${esc(label)}<span class="n">${counts[k] || 0}</span></label>`).join("");
+  $(id).querySelectorAll("input").forEach(el => el.onchange = () => { el.checked ? set.add(el.value) : set.delete(el.value); render(); });
+}
+
+function matches(r) {
+  const q = $("#q").value.trim().toLowerCase();
+  if (q && ![r.name, r.filename, r.email, ...(r.skill_list || []), ...(r.tag_list || [])].join(" ").toLowerCase().includes(q)) return false;
+  if ($("#reviewOnly").checked && !(r.review_reasons || []).length) return false;
+  if (r.status !== "ok") return !(filters.family.size || filters.seniority.size || filters.exp.size || filters.tags.size || filters.skills.size);
+  if (filters.family.size && !filters.family.has(r.primary_family)) return false;
+  if (filters.seniority.size && !filters.seniority.has(r.seniority_label)) return false;
+  if (filters.exp.size && !filters.exp.has(r.experience_band)) return false;
+  for (const t of filters.tags) if (!r.tag_list.includes(t)) return false;
+  for (const s of filters.skills) if (!r.skill_list.includes(s)) return false;
+  return true;
+}
+
+function count(rows, fn) { const c = {}; rows.forEach(r => [].concat(fn(r) ?? []).forEach(k => c[k] = (c[k] || 0) + 1)); return c; }
+
+function render() {
+  const ok = DATA.filter(r => r.status === "ok");
+  checkList("#f-family", filters.family, Object.keys(TAX.families).map(k => [k, pretty(k)]).filter(([k]) => ok.some(r => r.primary_family === k) || filters.family.has(k)), count(ok, r => r.primary_family));
+  checkList("#f-seniority", filters.seniority, TAX.seniority_labels.map(l => [l, l]), count(ok, r => r.seniority_label));
+  checkList("#f-exp", filters.exp, EXP_BANDS.map(b => [b, b]), count(ok, r => r.experience_band));
+  checkList("#f-tags", filters.tags, TAX.tags.map(t => [t, pretty(t)]), count(ok, r => r.tag_list));
+  checkList("#f-skills", filters.skills, Object.keys(TAX.skills).map(s => [s, pretty(s)]), count(ok, r => r.skill_list));
+
+  const rows = DATA.filter(matches).map(r => ({...r, composite: composite(r), seniority: r.scores?.seniority.score ?? -1}));
+  rows.sort((a, b) => { const x = a[sortKey] ?? "", y = b[sortKey] ?? ""; return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+
+  const review = DATA.filter(r => (r.review_reasons || []).length).length;
+  const tokens = DATA.reduce((s, r) => s + (r.input_tokens || 0), 0);
+  $("#stats").innerHTML = [
+    [DATA.length, "resumes"], [ok.length, "classified"], [review, "need review"],
+    [new Set(ok.map(r => r.primary_family)).size, "categories"], [rows.length, "shown"],
+    [`$${(tokens * 0.042 / 1e6).toFixed(4)}`, `${tokens.toLocaleString()} input tokens`],
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+
+  $("#rows").innerHTML = rows.length ? rows.map(r => r.status !== "ok" ? `
+    <tr data-id="${r.id}"><td>${esc(r.filename)}</td><td colspan="5"><span class="chip warn">${esc(r.status)}</span> <span class="sub">${esc(r.error)}</span></td></tr>` : `
+    <tr data-id="${r.id}">
+      <td><b>${esc(r.name || r.filename)}</b><div class="sub">${esc(r.email || r.filename)}</div></td>
+      <td>${pretty(r.primary_family)} <span class="sub">${(r.job_family.confidence * 100).toFixed(0)}%</span>
+        ${r.secondary_family ? `<div class="sub">also ${pretty(r.secondary_family)}</div>` : ""}
+        ${r.review_reasons.length ? `<div><span class="chip warn">review</span></div>` : ""}</td>
+      <td class="hide-sm">${esc(r.seniority_label)}</td>
+      <td class="hide-sm">${r.years_experience} yrs</td>
+      <td><span class="meter"><i style="width:${(r.composite * 100).toFixed(0)}%"></i></span> ${(r.composite * 100).toFixed(0)}</td>
+      <td class="hide-sm">${r.tag_list.map(t => `<span class="chip">${pretty(t)}</span>`).join("")}</td>
+    </tr>`).join("") : `<tr><td colspan="6" class="empty">${DATA.length ? "No resumes match these filters." : "No resumes yet. Classify the ./resumes folder or upload PDFs."}</td></tr>`;
+  document.querySelectorAll("#rows tr[data-id]").forEach(tr => tr.onclick = () => openDrawer(tr.dataset.id));
+}
+
+function probRows(probs, selected, labels) {
+  return Object.entries(probs).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, p]) => `
+    <div class="prow ${k == selected ? "sel" : ""}"><span>${esc(labels ? labels[k] : pretty(k))}</span><span class="bar"><i style="width:${p * 100}%"></i></span><span>${(p * 100).toFixed(0)}%</span></div>`).join("");
+}
+
+function openDrawer(id) {
+  const r = DATA.find(x => x.id === id), d = $("#drawer");
+  const head = `<button style="float:right" onclick="document.querySelector('#drawer').classList.remove('open')">Close</button>
+    <h2>${esc(r.name || r.filename)}</h2><div class="sub">${esc(r.filename)} · ${esc(r.email || "")}</div>
+    <div style="margin-top:8px"><a class="btn" href="/api/pdf/${r.id}" target="_blank">Open PDF</a>
+    <button onclick="removeRec('${r.id}')">Remove</button></div>
+    ${(r.review_reasons || []).length ? `<div class="review"><b>Needs review:</b> ${r.review_reasons.map(esc).join("; ")}</div>` : ""}`;
+  if (r.status !== "ok") { d.innerHTML = head; d.classList.add("open"); return; }
+  const sen = TAX.scores;
+  d.innerHTML = head + `
+    <h4>Job family (confidence ${(r.job_family.confidence * 100).toFixed(0)}%)</h4>${probRows(r.job_family.probabilities, r.job_family.choice)}
+    <h4>Scores</h4>${Object.entries(r.scores).map(([k, s]) => `
+      <div style="margin-bottom:8px"><b>${pretty(k)}</b>: ${s.score.toFixed(2)} / ${s.max} <span class="sub">(confidence ${(s.confidence * 100).toFixed(0)}%)</span>
+      ${probRows(s.probabilities, Object.entries(s.probabilities).sort((a, b) => b[1] - a[1])[0][0], Object.fromEntries(sen[k].levels.map((l, i) => [i, l.length > 38 ? l.slice(0, 36) + "…" : l])))}</div>`).join("")}
+    <h4>Experience: ${r.years_experience} yrs${r.employment_gaps.length ? ` · gaps ${r.employment_gaps.join(", ")}` : ""}</h4>
+    ${r.date_ranges.map(x => `<div class="prow ${x.is_job >= .5 ? "sel" : ""}"><span title="${esc(x.line)}">${esc(x.dates)} <span class="sub">${esc(x.line.slice(0, 22))}</span></span><span class="bar"><i style="width:${x.is_job * 100}%"></i></span><span>${(x.is_job * 100).toFixed(0)}%</span></div>`).join("") || `<div class="sub">No date ranges found</div>`}
+    <div class="sub">Bar = Jev's probability the range is a job (vs. education/break). Years are summed in code.</div>
+    <h4>Education (confidence ${(r.education.confidence * 100).toFixed(0)}%)</h4>${probRows(r.education.probabilities, r.education.choice)}
+    <h4>Industry</h4>${probRows(r.industry.probabilities, r.industry.choice)}
+    <h4>Tags</h4>${probRows(r.tags, null)}
+    <h4>Skill areas</h4>${probRows(r.skills, null)}
+    <h4>Prompt-injection check</h4><div class="prow ${r.injection >= .5 ? "sel" : ""}"><span>Text targets screening AI</span><span class="bar"><i style="width:${r.injection * 100}%"></i></span><span>${(r.injection * 100).toFixed(0)}%</span></div>
+    <div class="sub" style="margin-top:14px">Model ${esc(r.model)} · ${r.input_tokens?.toLocaleString()} input tokens</div>`;
+  d.classList.add("open");
+}
+
+async function removeRec(id) {
+  await fetch(`/api/results/${id}`, {method: "DELETE"});
+  $("#drawer").classList.remove("open"); load();
+}
+
+async function load() { DATA = await (await fetch("/api/results")).json(); render(); }
+
+async function track(resp) {
+  const j = await resp.json();
+  if (!resp.ok) { $("#progress").textContent = j.detail || "Request failed"; return; }
+  if (!j.job) { $("#progress").textContent = `Nothing new (${j.skipped} already classified)`; return; }
+  const tick = async () => {
+    const s = await (await fetch(`/api/jobs/${j.job}`)).json();
+    $("#progress").textContent = s.fatal ? `Failed: ${s.fatal}` : `Classifying ${s.done}/${s.total}${s.errors ? ` · ${s.errors} errors` : ""}${s.finished ? " · done" : "…"}`;
+    await load();
+    if (!s.finished) setTimeout(tick, 1000);
+  };
+  tick();
+}
+
+function uploadFiles(files) {
+  const fd = new FormData(); [...files].forEach(f => fd.append("files", f));
+  $("#progress").textContent = "Uploading…";
+  fetch("/api/upload", {method: "POST", body: fd}).then(track);
+}
+
+$("#scan").onclick = () => fetch("/api/scan-folder", {method: "POST"}).then(track);
+$("#file").onchange = e => uploadFiles(e.target.files);
+const drop = $("#drop");
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); uploadFiles(e.dataTransfer.files); };
+$("#q").oninput = render;
+$("#reviewOnly").onchange = render;
+document.querySelectorAll("th[data-sort]").forEach(th => th.onclick = () => {
+  sortDir = sortKey === th.dataset.sort ? -sortDir : -1; sortKey = th.dataset.sort; render();
+});
+
+(async () => { TAX = await (await fetch("/api/taxonomy")).json(); renderWeights(); load(); })();
+</script>
+</body>
+</html>
